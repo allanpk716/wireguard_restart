@@ -1,0 +1,4 @@
+domain: xx.xx.xx
+tunnel_name: "peer-Tower-wg0-1"
+interval: 5
+ip_version: ipv4

@@ -79,6 +79,7 @@ func (m *IPMonitor) checkIP() {
 		if m.config.IPVersion == "ipv4" || m.config.IPVersion == "both" {
 			ipv4 := ip.To4()
 			if ipv4 != nil && !ipv4.Equal(m.currentIPv4) {
+				logger.Infoln("IPv4 from:", m.currentIPv4, "to:", ipv4)
 				m.currentIPv4 = ipv4
 				ipv4Changed = true
 			}
@@ -86,6 +87,7 @@ func (m *IPMonitor) checkIP() {
 		if m.config.IPVersion == "ipv6" || m.config.IPVersion == "both" {
 			ipv6 := ip.To16()
 			if ipv6 != nil && !ipv6.Equal(m.currentIPv6) {
+				logger.Infoln("IPv6 from:", m.currentIPv6, "to:", ipv6)
 				m.currentIPv6 = ipv6
 				ipv6Changed = true
 			}
@@ -97,8 +99,13 @@ func (m *IPMonitor) checkIP() {
 		err = RestartWireGuardTunnel(m.config.TunnelName)
 		if err != nil {
 			logger.Errorln("Error restarting WireGuard:", err)
+			// 那么就需要清空当前的 IP，下次再检测
+			m.currentIPv4 = nil
+			m.currentIPv6 = nil
+			logger.Errorln("WireGuard 重启失败，清空当前 IP，下次再检测")
+			return
 		}
-		logger.Infoln("WireGuard restarted")
+		logger.Infoln("WireGuard 重启成功")
 	}
 }
 

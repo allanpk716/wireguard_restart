@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -47,31 +48,53 @@ func RestartWireGuardTunnel(tunnelName string) error {
 		configPath = configPath1
 	}
 	logger.Infoln("配置文件路径:", configPath)
-	// 尝试停止服务
-	//logger.Infoln("尝试停止服务:", tunnelName)
-	//stopCmd := exec.Command("sc.exe", "stop", tunnelName)
-	//if output, err := stopCmd.CombinedOutput(); err != nil {
-	//	logger.Errorln("停止服务返回:", string(output))
-	//	// 继续执行，因为服务可能本来就没在运行
-	//}
-	//time.Sleep(2 * time.Second)
 
 	// 卸载服务（使用隧道名称）
-	logger.Infoln("卸载隧道服务: %s", tunnelName)
-	output, err := executeCommand("wireguard.exe", "/uninstalltunnelservice", tunnelName)
+	logger.Infoln("卸载隧道服务:", tunnelName)
+	output, err := executeCommand(wireGuardExe, "/uninstalltunnelservice", tunnelName)
 	if err != nil {
 		logger.Errorln("卸载命令输出:", string(output))
 		// 继续执行，因为服务可能已经不存在
 	}
-
+	logger.Infoln("等待 2s, 等待服务完全停止...")
 	// 等待服务完全停止
 	time.Sleep(2 * time.Second)
 
+	// 查询服务状态
+	logger.Infoln("查询服务状态:", wireGuardService+tunnelName)
+	statusCmd := exec.Command("sc.exe", "query", wireGuardService+tunnelName)
+	outputBytes, err := statusCmd.CombinedOutput()
+	if err != nil {
+		logger.Infoln("服务停止成功")
+	} else {
+		logger.Errorln("服务停止 Err")
+	}
+
 	// 重新安装服务（使用配置文件路径）
-	logger.Infoln("安装隧道服务，使用配置文件: %s\n", configPath)
-	output, err = executeCommand("wireguard.exe", "/installtunnelservice", configPath)
+	logger.Infoln("安装隧道服务，使用配置文件:", configPath)
+	output, err = executeCommand(wireGuardExe, "/installtunnelservice", configPath)
 	if err != nil {
 		return fmt.Errorf("安装隧道服务失败: %s, 错误: %w", string(output), err)
+	}
+
+	logger.Infoln("等待 2s, 等待服务启动...")
+	time.Sleep(2 * time.Second)
+
+	// 查询服务状态
+	logger.Infoln("查询服务状态:", wireGuardService+tunnelName)
+	statusCmd = exec.Command("sc.exe", "query", wireGuardService+tunnelName)
+	outputBytes, err = statusCmd.CombinedOutput()
+	if err != nil {
+		logger.Errorln("没有查询到服务 Err:", string(outputBytes))
+		return err
+	} else {
+		logger.Infoln("查询服务状态:", string(outputBytes))
+		if strings.Contains(string(outputBytes), "RUNNING") == true {
+			logger.Infoln("服务启动成功")
+		} else {
+			logger.Errorln("服务启动失败")
+			return fmt.Errorf("服务启动失败")
+		}
 	}
 
 	return nil
@@ -80,4 +103,6 @@ func RestartWireGuardTunnel(tunnelName string) error {
 const (
 	configExtension1 = ".conf.dpapi"
 	configExtension2 = ".conf"
+	wireGuardExe     = "wireguard.exe"
+	wireGuardService = "WireGuardTunnel$"
 )

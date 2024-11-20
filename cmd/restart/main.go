@@ -2,9 +2,10 @@ package main
 
 import (
 	"flag"
+	"os"
+
 	"github.com/WQGroup/logger"
 	"github.com/allanpk716/wireguard_restart/internal"
-	"os"
 )
 
 func main() {
@@ -31,4 +32,5 @@ func main() {
 	default:
 		internal.Run(configFile)
 	}
+
 }
